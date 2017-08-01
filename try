@@ -1,0 +1,46 @@
+extwidth]{01_pictures/413.jpg}
+		\caption{Table for GCM Dew Point Temperature scaling versus GCM Precipitation Data}
+		%	\label{}
+	\end{figure}
+	
+This comparison was also important in terms of making choice of method to predict future extreme precipitation. The conventional approach of using GCM precipitation data showed considerably lower intensity when compared with the newly proposed approach of using DPT scaled precipitation data.\\
+
+The major difference between two approaches can be seen in the intensity values for lower duration and longer return periods. This implies that it is possible that GCM precipitation data may underestimate climate extremes because of their coarse temporal resolution. The results of this analysis can be seen in Figure 4.8 \\
+
+\section{Comparison using SOBEK Model}
+	
+With reference to previous chapter of research methodology, the steps mentioned in section 3.3.6 were used to set up SOBEK model and compare different methods hydraulically.\\
+
+\subsection{Comparing spatially the volume on street}
+
+	\begin{table}[h]
+		\centering
+		
+		\begin{tabular}{cc}
+			\includegraphics[width=0.5\textwidth]{01_pictures/414.jpg}	
+			&
+			\includegraphics[width=0.5\textwidth]{01_pictures/415.jpg}	
+			\\	
+			GCM Precipitation vs observed data	
+			&	
+			GCM DPT scaled vs observed data	
+			\\
+		\end{tabular}
+		\caption {Comparing spatially the volume on street}
+	\end{table}
+	
+	
+For the two approaches namely, GCM precipitation and GCM DPT scaled precipitation, SOBEK results were compared spatially while keeping observed precipitation data as the base case. The maps in table 4.2 shows nodes representing manholes with different amount of volume of water on street. The map on the left ( hereafter referred 4.2A) shows the increase in volume on street when GCM precipitation time-series were compared against observed precipitation time-series. The map on the right ( hereafter referred as 4.2B) shows the results for volume on street when GCM DPT scaled precipitation time-series were compared against observed precipitation time-series. While comparing 4.2A with 4.2B, it can be seen that for the same nodes, 4.2B has a higher amount of volume of water on street. Also, it can be observed that 4.2B has more number of nodes representing volume of water on street. \\
+
+These results explicitly reveal that there could be higher flood discharge level when GCM DPT scaled precipitation were used. In an urban catchment like the city of Delft, not only spatial coverage of flooding could increase but also there could be effects locally as more manholes could reach their saturation threshold. The magnitude to which volume of water on street has increased is of high importance to justify these claims. Hence, these results from the nodes were further analyzed numerically by exporting SOBEK results to excel.  \\
+
+\subsection{Comparing numerically the total volume on the street}
+
+The results from all the SOBEK model runs were compared numerically by using volume on street as the parameter for comparison. As expected the total volume on street increased when the return period increased \\
+
+\subsubsection{Total volume on street}
+
+	\begin{figure}[h]
+		\centering
+		\includegraphics[width=1\textwidth]{01_pictures/416.jpg}
+		\caption{IDF curve for Observed Data}
