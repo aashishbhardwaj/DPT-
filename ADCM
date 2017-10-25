@@ -1,0 +1,139 @@
+
+import os
+import pandas as pd
+import numpy as np
+
+#######################
+##other common libraries
+
+#import matplotlib.pyplot as plt
+#import glob
+#import scipy.stats as stats
+#import pylab as pl
+#import zipfile
+#import datetime as dt
+
+#####################
+#Functions
+#####################
+#####################
+#quantileCalculator
+#####################
+def qmn(dfr,qval):
+    dfr["mn"]=dfr.index.month
+    gp = dfr.groupby(by=dfr.mn, axis=0)
+    qv=gp.apply(lambda x: x.quantile(qval))
+    
+    return qv
+#####################
+#smoothening
+#####################
+def qcal(qq):
+    q2 = pd.DataFrame(np.zeros((qq.shape[0], qq.shape[1])), index=qq.index, columns=qq.columns)
+   
+    for rn in range(0,(qq.shape[0])):
+        for cn in range(0,(qq.shape[1])):
+            if((rn-1)<0):
+                q2.iloc[rn,cn]=((qq.iloc[(rn+11),cn])*0.25) + ((qq.iloc[(rn),cn])*0.50) + ((qq.iloc[(rn+1),cn])*0.25)
+            else:
+                if((rn+1)>((qq.shape[0])-1)):
+                    q2.iloc[rn,cn]= ((qq.iloc[(rn-1),cn])*0.25) + ((qq.iloc[(rn),cn])*0.50) + ((qq.iloc[(rn-11),cn])*0.25)
+                else:
+                    q2.iloc[rn,cn]= ((qq.iloc[(rn-1),cn])*0.25) + ((qq.iloc[(rn),cn])*0.50) + ((qq.iloc[(rn+1),cn])*0.25)
+    return q2
+#####################
+
+#####################
+#main()
+#####################
+#Reading Observed Data
+
+os.chdir("C:/02_June")
+df=pd.read_pickle("Observed_lagged.pk") # read observed file
+df["PPT3"]=df.PPT.rolling(window=3,center=True).sum() # rolling to convert 1 hr value to 3 hr
+df=df.fillna(0)
+df.PPT3[df.PPT3 < 0] = 0
+dobs = pd.DataFrame({ 'DPT':(df.DPT+273.15), 'PPT':(df.PPT3)})  #aggregate 3hour
+
+#####################
+#Reading GCM PPT data
+
+os.chdir("C:/03_Python/172706")
+d=pd.read_csv("Pr_NL_16_lt.csv", header=None,names=["val"])#read GCM precipitation data
+d=d*10800 # 3 X 60 X 60 lgm-2s-1 to mm/3hr
+d.index=pd.date_range(start='1950-01-01 00:00:00', end='2100-12-31 23:59:59',  freq='675s')
+dc1=pd.DataFrame((d.loc['1981-01-01':'2010-12-31'])) #select the control period
+df1=pd.DataFrame(d.loc['2071-01-01':'2100-12-31']) # select the future period
+
+############################################
+#monthly quantiles
+############################################
+o90=qmn(dobs,0.90)
+o60=qmn(dobs,0.60)
+
+c90=qmn(dc1,0.90)
+c60=qmn(dc1,0.60)
+
+f90=qmn(df1,0.90)
+f60=qmn(df1,0.60)
+
+q90 = pd.DataFrame({ 'ctr':c90.val, 'ftr':f90.val,'obs':o90.PPT })            
+q60 = pd.DataFrame({ 'ctr':c60.val, 'ftr':f60.val,'obs':o60.PPT }) 
+
+############################################
+#smoothening
+############################################
+q90= qcal(q90)
+q60= qcal(q60) 
+               
+#####################             
+#this is for ADCM coefficients on monthly basis
+               
+ad= pd.DataFrame()
+ad['g2']=   (q90.obs)/(q90.ctr)
+ad['g1']=   (q60.obs)/(q60.ctr)
+ad['b']=    (np.log((ad.g2*q90.ftr)/(ad.g1*q60.ftr)))/(np.log((ad.g2*q90.ctr)/(ad.g1*q60.ctr)))
+
+
+ad['a']=    (q60.ftr)/(((q60.ctr)**ad.b) * ((ad.g1)**(1-ad.b)))
+ad['o90']=  q90.obs 
+ad['o60']=  q60.obs
+#####################  
+#this is for Excess parameters on 3 hourly basis
+
+ee=pd.DataFrame({'Pctr':dc1.val, 'Pftr':df1.val.values})   
+ee.index = ee.index.month
+ee=ee.join(q90, how='left')#this is on 3 hour basis
+ee['ec'] = np.where((ee['Pctr'] > ee['ctr']), (ee.Pctr-ee.ctr), 0)
+ee['nc'] = np.where((ee['Pctr'] > ee['ctr']), 1, 0) 
+ee['ef'] = np.where((ee['Pftr'] > ee['ftr']), (ee.Pftr-ee.ftr), 0)
+ee['nf'] = np.where((ee['Pftr'] > ee['ftr']), 1, 0)
+ee['mn']=ee.index
+ee = ee.groupby(by=ee.index, axis=0).sum()#after grouping it is on monthly basis
+secm=qcal(pd.DataFrame(ee.ec/ee.nc))
+sefm=qcal(pd.DataFrame(ee.ef/ee.nf))
+##################### 
+#adding excess parameters next to ADCM coeffficients
+
+ad['Ecm']   = secm
+ad['Efm']   = sefm
+
+##################### 
+#new dataframe to compile all information
+
+mt=pd.DataFrame({"obs":df.PPT3,"obsh":df.PPT}) #this is 3 hour observed
+mt["date"]= mt.index
+mt.index = mt.index.month
+############################################
+#new dataframe for easing conversion  
+vc=mt.join(ad, how='left')
+vc=vc.sort(columns=["date"])
+vc.index=vc.date
+vc["Ps"] = np.where((vc.obs < vc.o90), (vc.a*(vc.obs**vc.b)) , ((vc.Efm/vc.Ecm)*(vc.obs-vc.o90))+ (vc.a*(vc.o90**vc.b) ) ) #calculating 3h projected precipitation]
+vc["R"]= vc.Ps/vc.obs #caculating change ratio
+vc=vc.fillna(0) # for all nan values due to previous step 
+vc["future"]=np.where(vc.R<0,vc.obsh,(vc.R*vc.obsh))
+############################################
+#new dataframe with columns #1- 3hour observed data, #2- 3 hour future, #3 - Change Ratio , #4 - 1 hour observed, #5 - 1 hour future
+tc=pd.DataFrame({'PPT3t':vc.obs,'PPT3':vc.Ps,'R':vc.R,'oPPT':vc.obsh,'oPPTt':vc.future })
+############################################
